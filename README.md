@@ -66,6 +66,24 @@ npm run preview
 
 Pull Request 只会执行构建检查，不会触发部署。
 
+### 常见问题：Get Pages site failed
+
+如果 Actions 报错：
+
+```text
+Error: Get Pages site failed. Please verify that the repository has Pages enabled...
+```
+
+表示仓库还没有启用 GitHub Pages，而不是构建失败。处理方式：
+
+1. 打开仓库 **Settings → Pages**。
+2. 在 **Build and deployment → Source** 中选择 **GitHub Actions**。
+3. 回到 Actions，重新运行 `Deploy to GitHub Pages` 工作流。
+
+不要直接设置 `enablement: true`。该选项需要额外的 Personal Access Token 或 GitHub App Token，默认的 `GITHUB_TOKEN` 无法为仓库启用 Pages。
+
+如果 Settings 中找不到 Pages 选项，请确认仓库为公开仓库，或当前 GitHub 套餐支持私有仓库 Pages。
+
 ## 测算口径
 
 ### 执行利率
