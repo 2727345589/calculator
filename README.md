@@ -46,6 +46,26 @@ npm run preview
 
 默认开发地址为 `http://localhost:5173/`。
 
+## 部署到 GitHub Pages
+
+项目已包含 GitHub Actions 工作流：
+
+```text
+.github/workflows/deploy.yml
+```
+
+部署步骤：
+
+1. 将项目推送到 GitHub 仓库的 `main` 分支。
+2. 打开仓库 **Settings → Pages**。
+3. 在 **Build and deployment → Source** 中选择 **GitHub Actions**。
+4. 推送到 `main` 后，Actions 会自动构建并部署。
+5. 部署完成后，在 Actions 运行详情或 Pages 设置中查看站点地址。
+
+工作流使用 Node.js 22 和 `npm ci` 构建，并将 `dist/` 发布到 GitHub Pages。Vite 已配置相对路径 `base: "./"`，可适配仓库子路径部署。
+
+Pull Request 只会执行构建检查，不会触发部署。
+
 ## 测算口径
 
 ### 执行利率
