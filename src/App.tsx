@@ -23,6 +23,7 @@ import {
   clamp,
   pickRecommendedStrategy,
   type DecisionGoal,
+  type RepaymentMethod,
 } from "./lib/loan";
 import {
   formatChineseDate,
@@ -70,6 +71,8 @@ function BrandMark() {
 export default function App() {
   const [form, setForm] = useState<FormValues>(DEFAULT_FORM);
   const [goal, setGoal] = useState<DecisionGoal>("interest");
+  const [repaymentMethod, setRepaymentMethod] =
+    useState<RepaymentMethod>("equalInterest");
 
   const remainingPrincipalWan = Math.max(
     0.01,
@@ -92,12 +95,19 @@ export default function App() {
   const analysis = useMemo(
     () =>
       calculateLoan({
+        repaymentMethod,
         remainingPrincipal: remainingPrincipalWan * 10000,
         annualRate: effectiveRate,
         remainingMonths,
         prepayAmount: prepayWan * 10000,
       }),
-    [remainingPrincipalWan, effectiveRate, remainingMonths, prepayWan],
+    [
+      repaymentMethod,
+      remainingPrincipalWan,
+      effectiveRate,
+      remainingMonths,
+      prepayWan,
+    ],
   );
 
   const recommended = useMemo(
@@ -161,11 +171,13 @@ export default function App() {
             <em>怎么还更划算？</em>
           </h1>
           <p>
-            输入当前剩余本金、剩余期数、LPR 与加点，再填入一笔提前还款金额，实时比较「缩短月供」与「缩短年限」的月供、期数与总利息，找到更适合你现金流的那一种。
+            支持等额本息与等额本金两种还款方式。输入当前剩余本金、剩余期数、下一期还款日、LPR
+            与加点，再填入一笔提前还款金额，实时比较「缩短月供」与「缩短年限」的月供、期数与总利息。
           </p>
           <div className="hero-pills">
             <span>
-              <Check size={13} /> 等额本息
+              <Check size={13} />{" "}
+              {repaymentMethod === "equalPrincipal" ? "等额本金" : "等额本息"}
             </span>
             <span>
               <Check size={13} /> LPR 自由加减点
@@ -222,13 +234,16 @@ export default function App() {
         <InputPanel
           form={form}
           goal={goal}
+          repaymentMethod={repaymentMethod}
           effectiveRate={effectiveRate}
           balanceBeforePrepay={analysis.balanceBeforePrepay}
           onChange={handleChange}
           onGoalChange={setGoal}
+          onRepaymentMethodChange={setRepaymentMethod}
           onReset={() => {
             setForm(DEFAULT_FORM);
             setGoal("interest");
+            setRepaymentMethod("equalInterest");
           }}
         />
 

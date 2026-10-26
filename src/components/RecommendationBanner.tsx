@@ -41,6 +41,7 @@ export function RecommendationBanner({
     analysis.input.effectivePrepay > 0 &&
     analysis.balanceAfterPrepay <= 1;
   const hasPrepayment = analysis.input.effectivePrepay > 0.01;
+  const isEqualPrincipal = analysis.repaymentMethod === "equalPrincipal";
   const baselinePayoffDate = getPaymentDate(
     nextPaymentDate,
     analysis.input.remainingMonths,
@@ -130,19 +131,38 @@ export function RecommendationBanner({
       <>
         推荐「缩短月供」
         <span className="recommend-highlight">
-          每月少还 {formatMoney(recommended.monthlySavings)}
+          {isEqualPrincipal ? "首月" : "每月"}少还{" "}
+          {formatMoney(recommended.monthlySavings)}
         </span>
       </>
     );
 
   const body =
     recommended.key === "reduceTerm" ? (
+      isEqualPrincipal ? (
+        <>
+          每月应还本金保持不变，预计 {formatYearMonth(recommendedPayoffDate)}{" "}
+          还清，比原计划的 {formatYearMonth(baselinePayoffDate)} 提前{" "}
+          {formatMonths(recommended.monthsSaved)}。首月月供约{" "}
+          {formatMoney(recommended.monthlyPayment, 2)}，之后逐月递减；相比「缩短月供」可再多省{" "}
+          {formatMoney(extraSaving)} 利息。
+        </>
+      ) : (
+        <>
+          月供继续保持当前 {formatMoney(recommended.monthlyPayment, 2)}，预计{" "}
+          {formatYearMonth(recommendedPayoffDate)} 还清，比原计划的{" "}
+          {formatYearMonth(baselinePayoffDate)} 提前{" "}
+          {formatMonths(recommended.monthsSaved)}。相比「缩短月供」可再多省{" "}
+          {formatMoney(extraSaving)} 利息。
+        </>
+      )
+    ) : isEqualPrincipal ? (
       <>
-        月供继续保持当前 {formatMoney(recommended.monthlyPayment, 2)}，预计{" "}
-        {formatYearMonth(recommendedPayoffDate)} 还清，比原计划的{" "}
-        {formatYearMonth(baselinePayoffDate)} 提前{" "}
-        {formatMonths(recommended.monthsSaved)}。相比「缩短月供」可再多省{" "}
-        {formatMoney(extraSaving)} 利息。
+        首月月供从当前 {formatMoney(analysis.currentMonthlyPayment, 2)}{" "}
+        降至 {formatMoney(recommended.monthlyPayment, 2)}
+        ，之后逐月递减；贷款仍按原计划延续至{" "}
+        {formatYearMonth(baselinePayoffDate)}。未来总利息也能省下{" "}
+        {formatMoney(recommended.interestSaved)}。
       </>
     ) : (
       <>
@@ -177,7 +197,8 @@ export function RecommendationBanner({
           {recommended.key === "reduceTerm" ? (
             <>
               <span>
-                <Check size={13} /> 月供保持不变
+                <Check size={13} />{" "}
+                {isEqualPrincipal ? "每月本金不变" : "月供保持不变"}
               </span>
               <span>
                 <ArrowDownRight size={13} /> 提前{" "}
@@ -191,14 +212,16 @@ export function RecommendationBanner({
           ) : (
             <>
               <span>
-                <Wallet size={13} /> 月供降低{" "}
+                <Wallet size={13} />{" "}
+                {isEqualPrincipal ? "首月月供降低" : "月供降低"}{" "}
                 {formatMoney(recommended.monthlySavings)}
               </span>
               <span>
                 <Check size={13} /> 至 {formatYearMonth(baselinePayoffDate)} 结清
               </span>
               <span>
-                <Check size={13} /> 现金流更从容
+                <Check size={13} />{" "}
+                {isEqualPrincipal ? "逐月递减" : "现金流更从容"}
               </span>
             </>
           )}

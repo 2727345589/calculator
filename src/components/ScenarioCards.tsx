@@ -40,6 +40,7 @@ export function ScenarioCards({ analysis, recommended, nextPaymentDate }: Scenar
     analysis.reduceTerm,
   ];
   const hasPrepayment = analysis.input.effectivePrepay > 0.01;
+  const isEqualPrincipal = analysis.repaymentMethod === "equalPrincipal";
 
   return (
     <div className="scenario-grid">
@@ -58,9 +59,13 @@ export function ScenarioCards({ analysis, recommended, nextPaymentDate }: Scenar
           if (strategy.isPaidOffAtPrepayment) {
             delta = "提前还款后直接结清";
           } else if (strategy.key === "reducePayment") {
-            delta = `较当前月供 ↓ ${formatMoney(strategy.monthlySavings, 2)} / 月`;
+            delta = `${
+              isEqualPrincipal ? "首月月供" : "较当前月供"
+            } ↓ ${formatMoney(strategy.monthlySavings, 2)} / 月`;
           } else {
-            delta = `月供不变 · 提前 ${formatMonths(strategy.monthsSaved)}结清`;
+            delta = `${
+              isEqualPrincipal ? "每月本金不变" : "月供不变"
+            } · 提前 ${formatMonths(strategy.monthsSaved)}结清`;
           }
         }
 
@@ -93,10 +98,14 @@ export function ScenarioCards({ analysis, recommended, nextPaymentDate }: Scenar
             <div className="scenario-main">
               <span className="scenario-main__label">
                 {isBaseline
-                  ? "当前月供"
+                  ? isEqualPrincipal
+                    ? "当前首月月供"
+                    : "当前月供"
                   : strategy.isPaidOffAtPrepayment
                     ? "贷款状态"
-                    : "新月供"}
+                    : isEqualPrincipal
+                      ? "新首月月供"
+                      : "新月供"}
               </span>
               <div className="scenario-amount">
                 {strategy.isPaidOffAtPrepayment ? (
@@ -118,6 +127,11 @@ export function ScenarioCards({ analysis, recommended, nextPaymentDate }: Scenar
                 ) : null}
                 {delta}
               </p>
+              {isEqualPrincipal && !strategy.isPaidOffAtPrepayment ? (
+                <p className="scenario-decreasing">
+                  首月最高 · 每月递减 {formatMoney(strategy.monthlyDecrease, 2)}
+                </p>
+              ) : null}
             </div>
 
             <div className="scenario-metrics">

@@ -28,6 +28,7 @@ export function ComparisonTable({
 }: ComparisonTableProps) {
   const hasPrepayment = analysis.input.effectivePrepay > 0.01;
   const recommendedKey = hasPrepayment ? recommended.key : "none";
+  const isEqualPrincipal = analysis.repaymentMethod === "equalPrincipal";
   const strategies = [
     analysis.baseline,
     analysis.reducePayment,
@@ -84,21 +85,24 @@ export function ComparisonTable({
           </thead>
           <tbody>
             <tr>
-              <th>新月供</th>
+              <th>{isEqualPrincipal ? "首月月供" : "月供"}</th>
               {strategies.map((strategy) => (
                 <td key={strategy.key}>
                   {strategy.isPaidOffAtPrepayment ? (
                     <span className="cell-muted">已结清</span>
-                  ) : strategy.key === "baseline" ? (
-                    formatMoney(strategy.monthlyPayment, 2)
                   ) : (
-                    formatMoney(strategy.monthlyPayment, 2)
+                    <>
+                      {formatMoney(strategy.monthlyPayment, 2)}
+                      {isEqualPrincipal ? (
+                        <span className="cell-sub">逐月递减</span>
+                      ) : null}
+                    </>
                   )}
                 </td>
               ))}
             </tr>
             <tr>
-              <th>月供变化</th>
+              <th>{isEqualPrincipal ? "首月月供变化" : "月供变化"}</th>
               {strategies.map((strategy) => (
                 <td key={strategy.key}>
                   {strategy.key === "baseline" ? (
@@ -119,7 +123,7 @@ export function ComparisonTable({
               ))}
             </tr>
             <tr>
-              <th>首期月供本金</th>
+              <th>首月月供本金</th>
               {strategies.map((strategy) => {
                 const breakdown = getFirstBreakdown(strategy);
                 return (
@@ -132,7 +136,7 @@ export function ComparisonTable({
               })}
             </tr>
             <tr>
-              <th>首期月供利息</th>
+              <th>首月月供利息</th>
               {strategies.map((strategy) => {
                 const breakdown = getFirstBreakdown(strategy);
                 return (
@@ -142,6 +146,18 @@ export function ComparisonTable({
                 );
               })}
             </tr>
+            {isEqualPrincipal ? (
+              <tr>
+                <th>每月递减</th>
+                {strategies.map((strategy) => (
+                  <td key={strategy.key}>
+                    {strategy.monthlyDecrease > 0
+                      ? formatMoney(strategy.monthlyDecrease, 2)
+                      : "—"}
+                  </td>
+                ))}
+              </tr>
+            ) : null}
             <tr>
               <th>剩余期数</th>
               {strategies.map((strategy) => (
@@ -219,7 +235,7 @@ export function ComparisonTable({
         </table>
       </div>
       <p className="table-footnote">
-        总还款额已包含提前还款本金；日期按下一期还款日逐月顺延测算，遇月末取当月最后一天。缩短年限方案按月供不变、末期金额微调测算。
+        总还款额已包含提前还款本金；日期按下一期还款日逐月顺延测算，遇月末取当月最后一天。缩短年限方案按还款方式保持原月供或每月本金不变，末期金额微调测算。
       </p>
     </section>
   );

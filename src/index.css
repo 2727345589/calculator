@@ -892,6 +892,46 @@ h3 {
   );
 }
 
+.method-box {
+  margin-top: 17px;
+  padding: 11px;
+  border: 1px solid #dbe7dc;
+  border-radius: 14px;
+  background: linear-gradient(135deg, #f0f5ef, #faf8f2);
+}
+
+.method-tabs {
+  margin-top: 8px;
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 3px;
+  padding: 3px;
+  border-radius: 10px;
+  background: #e5ede4;
+}
+
+.method-tabs button {
+  height: 31px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: #69766b;
+  font-size: 10.5px;
+  font-weight: 500;
+  transition: background 160ms ease, color 160ms ease, box-shadow 160ms ease;
+}
+
+.method-tabs button:hover {
+  color: var(--green-800);
+}
+
+.method-tabs button.is-active {
+  color: #fbf5e7;
+  background: var(--green-900);
+  box-shadow: 0 3px 8px rgba(21, 58, 43, 0.16);
+  font-weight: 600;
+}
+
 .period-badge {
   display: inline-flex;
   align-items: center;
@@ -1640,6 +1680,17 @@ h3 {
   color: var(--copper-dark);
   font-size: 9px;
   line-height: 1.5;
+}
+
+.scenario-decreasing {
+  margin-top: 1px;
+  color: #9a9d92;
+  font-size: 8px;
+  line-height: 1.45;
+}
+
+.scenario-card--recommended .scenario-decreasing {
+  color: rgba(247, 241, 228, 0.42);
 }
 
 .scenario-card--recommended .scenario-delta {

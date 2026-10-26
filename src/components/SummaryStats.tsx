@@ -9,6 +9,7 @@ import type { LoanAnalysis, StrategyResult } from "../lib/loan";
 import { formatMoney, formatWan } from "../lib/format";
 import {
   formatChineseDate,
+  formatShortDate,
   formatYearMonth,
   getPaymentDate,
 } from "../lib/date";
@@ -36,12 +37,13 @@ export function SummaryStats({
     nextPaymentDate,
     analysis.baseline.totalMonths,
   );
+  const isEqualPrincipal = analysis.repaymentMethod === "equalPrincipal";
 
   return (
     <section className="stat-grid" aria-label="贷款概览">
       <article className="stat-card">
         <div className="stat-card__top">
-          <span>当前月供</span>
+          <span>{isEqualPrincipal ? "当前首月月供" : "当前月供"}</span>
           <span className="stat-icon stat-icon--green">
             <Wallet size={16} />
           </span>
@@ -51,7 +53,12 @@ export function SummaryStats({
           {formatMoney(analysis.currentMonthlyPayment, 2, false)}
         </div>
         <p className="stat-foot">
-          下一期 {formatChineseDate(nextDate)}
+          {isEqualPrincipal
+            ? `下期 ${formatShortDate(nextDate)} · 每月递减 ${formatMoney(
+                analysis.currentMonthlyDecrease,
+                2,
+              )}`
+            : `下一期 ${formatChineseDate(nextDate)}`}
         </p>
       </article>
 

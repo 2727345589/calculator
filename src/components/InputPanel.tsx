@@ -6,7 +6,7 @@ import {
   Sparkles,
   WalletCards,
 } from "lucide-react";
-import type { DecisionGoal } from "../lib/loan";
+import type { DecisionGoal, RepaymentMethod } from "../lib/loan";
 import type { FormValues } from "../types";
 import {
   daysUntil,
@@ -19,10 +19,12 @@ import { formatWan } from "../lib/format";
 interface InputPanelProps {
   form: FormValues;
   goal: DecisionGoal;
+  repaymentMethod: RepaymentMethod;
   effectiveRate: number;
   balanceBeforePrepay: number;
   onChange: (key: keyof FormValues, value: string) => void;
   onGoalChange: (goal: DecisionGoal) => void;
+  onRepaymentMethodChange: (method: RepaymentMethod) => void;
   onReset: () => void;
 }
 
@@ -102,10 +104,12 @@ const remainingTermChips = [
 export function InputPanel({
   form,
   goal,
+  repaymentMethod,
   effectiveRate,
   balanceBeforePrepay,
   onChange,
   onGoalChange,
+  onRepaymentMethodChange,
   onReset,
 }: InputPanelProps) {
   const lpr = Number(form.lpr) || 0;
@@ -142,6 +146,38 @@ export function InputPanel({
         >
           <RotateCcw size={16} />
         </button>
+      </div>
+
+      <div className="method-box">
+        <div className="field-label-row">
+          <span className="field-label">还款方式</span>
+          <span className="goal-note">影响全页测算</span>
+        </div>
+        <div className="method-tabs" role="tablist" aria-label="还款方式">
+          <button
+            type="button"
+            role="tab"
+            aria-selected={repaymentMethod === "equalInterest"}
+            className={repaymentMethod === "equalInterest" ? "is-active" : ""}
+            onClick={() => onRepaymentMethodChange("equalInterest")}
+          >
+            等额本息
+          </button>
+          <button
+            type="button"
+            role="tab"
+            aria-selected={repaymentMethod === "equalPrincipal"}
+            className={repaymentMethod === "equalPrincipal" ? "is-active" : ""}
+            onClick={() => onRepaymentMethodChange("equalPrincipal")}
+          >
+            等额本金
+          </button>
+        </div>
+        <p className="goal-hint">
+          {repaymentMethod === "equalPrincipal"
+            ? "首月月供最高，之后每月递减；总利息通常更少。"
+            : "每月月供固定，前期利息占比较高，现金流更稳定。"}
+        </p>
       </div>
 
       <div className="form-section form-section--loan">
@@ -398,7 +434,10 @@ export function InputPanel({
 
       <div className="panel-footnote">
         <ShieldCheck size={15} />
-        <span>等额本息 · 基于剩余贷款实时计算 · 无任何数据上传</span>
+        <span>
+          {repaymentMethod === "equalPrincipal" ? "等额本金" : "等额本息"} ·
+          基于剩余贷款实时计算 · 无任何数据上传
+        </span>
       </div>
     </aside>
   );

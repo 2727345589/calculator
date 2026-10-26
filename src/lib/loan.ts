@@ -1,11 +1,13 @@
 export type StrategyKey = "baseline" | "reducePayment" | "reduceTerm";
 export type DecisionGoal = "interest" | "cashflow" | "balanced";
+export type RepaymentMethod = "equalInterest" | "equalPrincipal";
 
 export interface LoanInput {
+  repaymentMethod: RepaymentMethod;
   remainingPrincipal: number; // 剩余贷款金额（元）
-  annualRate: number;         // 执行年利率（%）
-  remainingMonths: number;    // 剩余还款期数（期）
-  prepayAmount: number;       // 提前还款金额（元）
+  annualRate: number; // 执行年利率（%）
+  remainingMonths: number; // 剩余还款期数（期）
+  prepayAmount: number; // 提前还款金额（元）
 }
 
 export interface ScheduleEntry {
@@ -30,6 +32,7 @@ export interface StrategyResult {
   label: string;
   description: string;
   monthlyPayment: number;
+  monthlyDecrease: number;
   currentMonthlyPayment: number;
   monthlySavings: number;
   monthsSaved: number;
@@ -52,7 +55,9 @@ export interface LoanAnalysis {
     prepayAmount: number;
     effectivePrepay: number;
   };
+  repaymentMethod: RepaymentMethod;
   currentMonthlyPayment: number;
+  currentMonthlyDecrease: number;
   balanceBeforePrepay: number;
   balanceAfterPrepay: number;
   baseline: StrategyResult;
@@ -144,6 +149,36 @@ function buildFlexibleSchedule(
   return schedule;
 }
 
+function buildEqualPrincipalSchedule(
+  principal: number,
+  monthlyRate: number,
+  principalPerMonth: number,
+  months: number,
+  startPeriod = 1,
+): ScheduleEntry[] {
+  const schedule: ScheduleEntry[] = [];
+  let balance = principal;
+
+  for (let index = 0; index < months; index += 1) {
+    if (balance <= EPSILON) break;
+    const interest = balance * monthlyRate;
+    const principalPaid = Math.min(balance, Math.max(0, principalPerMonth));
+    const actualPayment = principalPaid + interest;
+    balance = Math.max(0, balance - principalPaid);
+
+    schedule.push({
+      kind: "payment",
+      period: startPeriod + index,
+      payment: actualPayment,
+      principal: principalPaid,
+      interest,
+      balance,
+    });
+  }
+
+  return schedule;
+}
+
 function sumInterest(schedule: ScheduleEntry[]): number {
   return schedule.reduce((sum, row) => sum + row.interest, 0);
 }
@@ -173,6 +208,14 @@ function getFirstPayment(schedule: ScheduleEntry[]): PaymentBreakdown | null {
   };
 }
 
+function getMonthlyDecrease(schedule: ScheduleEntry[]): number {
+  const payments = schedule.filter(
+    (entry) => entry.kind === "payment" && entry.payment > EPSILON,
+  );
+  if (payments.length < 2) return 0;
+  return Math.max(0, payments[0].payment - payments[1].payment);
+}
+
 function createStrategy(
   key: StrategyKey,
   label: string,
@@ -194,6 +237,7 @@ function createStrategy(
     label,
     description,
     monthlyPayment: isPaidOffAtPrepayment ? 0 : monthlyPayment,
+    monthlyDecrease: isPaidOffAtPrepayment ? 0 : getMonthlyDecrease(schedule),
     currentMonthlyPayment,
     monthlySavings: isPaidOffAtPrepayment
       ? currentMonthlyPayment
@@ -216,19 +260,26 @@ export function calculateLoan(input: LoanInput): LoanAnalysis {
   const annualRate = Math.max(0, input.annualRate);
   const totalMonths = Math.max(1, Math.round(input.remainingMonths));
   const monthlyRate = annualRate / 100 / 12;
+  const repaymentMethod = input.repaymentMethod ?? "equalInterest";
+  const isEqualPrincipal = repaymentMethod === "equalPrincipal";
+  const principalPerMonth = principal / totalMonths;
+  const currentMonthlyPayment = isEqualPrincipal
+    ? principalPerMonth + principal * monthlyRate
+    : calculateMonthlyPayment(principal, annualRate, totalMonths);
 
-  const currentMonthlyPayment = calculateMonthlyPayment(
-    principal,
-    annualRate,
-    totalMonths,
-  );
-
-  const baselineSchedule = buildFixedSchedule(
-    principal,
-    monthlyRate,
-    currentMonthlyPayment,
-    totalMonths,
-  );
+  const baselineSchedule = isEqualPrincipal
+    ? buildEqualPrincipalSchedule(
+        principal,
+        monthlyRate,
+        principalPerMonth,
+        totalMonths,
+      )
+    : buildFixedSchedule(
+        principal,
+        monthlyRate,
+        currentMonthlyPayment,
+        totalMonths,
+      );
   const baselineTotalInterest = sumInterest(baselineSchedule);
   const baselineTotalPaid = sumPayments(baselineSchedule);
 
@@ -238,10 +289,13 @@ export function calculateLoan(input: LoanInput): LoanAnalysis {
   const effectivePrepay = Math.min(requestedPrepay, principal);
   const balanceAfterPrepay = Math.max(0, principal - effectivePrepay);
 
+  const baselineDescription = isEqualPrincipal
+    ? "按当前剩余期数逐月递减还款"
+    : "按当前剩余期数还满全部月供";
   const baseline = createStrategy(
     "baseline",
     "不提前还款",
-    "按当前剩余期数还满全部月供",
+    baselineDescription,
     baselineSchedule,
     currentMonthlyPayment,
     currentMonthlyPayment,
@@ -268,36 +322,60 @@ export function calculateLoan(input: LoanInput): LoanAnalysis {
   const reducePaymentMonthly =
     balanceAfterPrepay <= EPSILON
       ? 0
-      : calculateMonthlyPayment(balanceAfterPrepay, annualRate, totalMonths);
+      : isEqualPrincipal
+        ? balanceAfterPrepay / totalMonths + balanceAfterPrepay * monthlyRate
+        : calculateMonthlyPayment(balanceAfterPrepay, annualRate, totalMonths);
   const reducePaymentSchedule = [
     ...withPrepayment(),
     ...(balanceAfterPrepay <= EPSILON
       ? []
-      : buildFixedSchedule(
-          balanceAfterPrepay,
-          monthlyRate,
-          reducePaymentMonthly,
-          totalMonths,
-        )),
+      : isEqualPrincipal
+        ? buildEqualPrincipalSchedule(
+            balanceAfterPrepay,
+            monthlyRate,
+            balanceAfterPrepay / totalMonths,
+            totalMonths,
+          )
+        : buildFixedSchedule(
+            balanceAfterPrepay,
+            monthlyRate,
+            reducePaymentMonthly,
+            totalMonths,
+          )),
   ];
 
+  const reduceTermMonthly =
+    balanceAfterPrepay <= EPSILON
+      ? 0
+      : isEqualPrincipal
+        ? principalPerMonth + balanceAfterPrepay * monthlyRate
+        : currentMonthlyPayment;
   const reduceTermSchedule = [
     ...withPrepayment(),
     ...(balanceAfterPrepay <= EPSILON
       ? []
-      : buildFlexibleSchedule(
-          balanceAfterPrepay,
-          monthlyRate,
-          currentMonthlyPayment,
-          1,
-          totalMonths,
-        )),
+      : isEqualPrincipal
+        ? buildEqualPrincipalSchedule(
+            balanceAfterPrepay,
+            monthlyRate,
+            principalPerMonth,
+            totalMonths,
+          )
+        : buildFlexibleSchedule(
+            balanceAfterPrepay,
+            monthlyRate,
+            currentMonthlyPayment,
+            1,
+            totalMonths,
+          )),
   ];
 
   const reducePayment = createStrategy(
     "reducePayment",
     "缩短月供",
-    "剩余期限不变，直接降低每月月供",
+    isEqualPrincipal
+      ? "剩余期限不变，降低每月应还本金"
+      : "剩余期限不变，直接降低每月月供",
     reducePaymentSchedule,
     currentMonthlyPayment,
     reducePaymentMonthly,
@@ -308,10 +386,12 @@ export function calculateLoan(input: LoanInput): LoanAnalysis {
   const reduceTerm = createStrategy(
     "reduceTerm",
     "缩短年限",
-    "保持当前月供，大幅缩短还款年限",
+    isEqualPrincipal
+      ? "每月本金不变，缩短还款年限"
+      : "保持当前月供，大幅缩短还款年限",
     reduceTermSchedule,
     currentMonthlyPayment,
-    currentMonthlyPayment,
+    reduceTermMonthly,
     baselineTotalInterest,
     totalMonths,
   );
@@ -324,7 +404,9 @@ export function calculateLoan(input: LoanInput): LoanAnalysis {
       prepayAmount: requestedPrepay,
       effectivePrepay,
     },
+    repaymentMethod,
     currentMonthlyPayment,
+    currentMonthlyDecrease: baseline.monthlyDecrease,
     balanceBeforePrepay: principal,
     balanceAfterPrepay,
     baseline,
